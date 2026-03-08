@@ -1,13 +1,15 @@
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { LogOut, Pin, MoreVertical, Reply, Heart, Trash2 } from 'lucide-react';
+import { LogOut, Pin, MoreVertical, Reply, Heart, Trash2, Settings as SettingsIcon } from 'lucide-react';
 import MessageInput from './MessageInput';
+import Settings from './Settings';
 
-export default function Chat({ user, onLogout }) {
+export default function Chat({ user, onLogout, onUpdateUser }) {
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
-  const [activeMenu, setActiveMenu] = useState(null); // id of message with open context menu
-  const [replyingTo, setReplyingTo] = useState(null); // the message object we are replying to
+  const [activeMenu, setActiveMenu] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -138,9 +140,14 @@ export default function Chat({ user, onLogout }) {
           <h1>cimento chat</h1>
           <span className="user-badge">{user.nickname}</span>
         </div>
-        <button className="icon-btn" onClick={onLogout} title="Logout">
-          <LogOut size={20} />
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button className="icon-btn" onClick={() => setShowSettings(true)} title="Settings">
+            <SettingsIcon size={20} />
+          </button>
+          <button className="icon-btn" onClick={onLogout} title="Logout">
+            <LogOut size={20} />
+          </button>
+        </div>
       </div>
 
       {messages.some(m => m.is_pinned) && (
@@ -183,6 +190,11 @@ export default function Chat({ user, onLogout }) {
           return (
             <div id={`msg-${msg.id}`} key={msg.id} className={`message-wrapper ${isMine ? 'mine' : 'other'} ${msg.is_pinned ? 'pinned' : ''}`}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMine ? 'flex-end' : 'flex-start', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                {!isMine && user.avatar && msg.sender_nickname === user.nickname ? null : !isMine && (
+                  <div className="msg-avatar-small">
+                    {msg.sender_nickname.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <span className="message-sender">{msg.sender_nickname}</span>
                 
                 <div className="message-actions-container">
@@ -249,6 +261,14 @@ export default function Chat({ user, onLogout }) {
         replyingTo={replyingTo}
         onCancelReply={() => setReplyingTo(null)}
       />
+
+      {showSettings && (
+        <Settings 
+          user={user} 
+          onUpdateUser={onUpdateUser} 
+          onClose={() => setShowSettings(false)} 
+        />
+      )}
     </div>
   );
 }

@@ -1,0 +1,97 @@
+import { useState, useRef } from 'react';
+import { X, Camera, User } from 'lucide-react';
+
+export default function Settings({ user, onUpdateUser, onClose }) {
+  const [nickname, setNickname] = useState(user.nickname);
+  const [avatarPreview, setAvatarPreview] = useState(user.avatar || null);
+  const fileInputRef = useRef(null);
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Upload to server
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('password', user.password);
+    formData.append('nickname', user.nickname);
+    formData.append('type', 'avatar');
+
+    fetch('/api/upload', { method: 'POST', body: formData })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          const avatarUrl = data.message.content;
+          setAvatarPreview(avatarUrl);
+          onUpdateUser({ avatar: avatarUrl });
+        }
+      })
+      .catch(err => console.error('Avatar upload failed:', err));
+  };
+
+  const handleSave = () => {
+    if (nickname.trim() && nickname !== user.nickname) {
+      onUpdateUser({ nickname: nickname.trim() });
+    }
+    onClose();
+  };
+
+  return (
+    <div className="settings-overlay" onClick={onClose}>
+      <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="settings-header">
+          <h2>Settings</h2>
+          <button className="icon-btn" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="settings-body">
+          {/* Avatar */}
+          <div className="settings-avatar-section">
+            <div 
+              className="settings-avatar" 
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="avatar" />
+              ) : (
+                <User size={40} />
+              )}
+              <div className="avatar-overlay">
+                <Camera size={18} />
+              </div>
+            </div>
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              accept="image/*" 
+              onChange={handleAvatarChange} 
+              style={{ display: 'none' }} 
+            />
+            <span className="settings-avatar-hint">Click to change photo</span>
+          </div>
+
+          {/* Nickname */}
+          <div className="settings-field">
+            <label>Nickname</label>
+            <input
+              className="custom-input"
+              type="text"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder="Enter nickname"
+              maxLength={20}
+            />
+          </div>
+        </div>
+
+        <div className="settings-footer">
+          <button className="primary-btn settings-save-btn" onClick={handleSave}>
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

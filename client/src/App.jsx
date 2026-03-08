@@ -18,6 +18,10 @@ function App() {
     fontSize: `${1 + Math.random() * 2}rem`
   }));
 
+  const updateUser = (updates) => {
+    setUser(prev => ({ ...prev, ...updates }));
+  };
+
   return (
     <>
       <div className="emoji-bg">
@@ -40,7 +44,7 @@ function App() {
       {!user ? (
         <Login onLogin={setUser} />
       ) : (
-        <Chat user={user} onLogout={() => setUser(null)} />
+        <Chat user={user} onLogout={() => setUser(null)} onUpdateUser={updateUser} />
       )}
     </>
   );
