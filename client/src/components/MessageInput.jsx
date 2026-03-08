@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
-import { Image as ImageIcon, Mic, Send, X, Loader2, Square, Smile } from 'lucide-react';
+import { Image as ImageIcon, Mic, Send, X, Loader2, Square, Smile, Film } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
+import GifSearch from './GifSearch';
 
 export default function MessageInput({ onSendText, onSendFile, user, replyingTo, onCancelReply }) {
   const [text, setText] = useState('');
@@ -8,6 +9,7 @@ export default function MessageInput({ onSendText, onSendFile, user, replyingTo,
   const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifSearch, setShowGifSearch] = useState(false);
   
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -158,6 +160,29 @@ export default function MessageInput({ onSendText, onSendFile, user, replyingTo,
               onEmojiClick={(emojiData) => setText(prev => prev + emojiData.emoji)} 
               theme="dark" 
               emojiStyle="apple" 
+              lazyLoadEmojis={true}
+            />
+          </div>
+        )}
+        
+        <button 
+          type="button" 
+          className="icon-btn" 
+          onClick={() => { setShowGifSearch(val => !val); setShowEmojiPicker(false); fileInputRef.current?.blur(); }}
+          disabled={isUploading || isRecording}
+          title="Send GIF"
+        >
+          <Film size={20} />
+        </button>
+
+        {showGifSearch && (
+          <div className="gif-picker-wrapper">
+            <GifSearch 
+              onSelect={(url) => {
+                onSendText(url);
+                setShowGifSearch(false);
+              }}
+              onClose={() => setShowGifSearch(false)}
             />
           </div>
         )}

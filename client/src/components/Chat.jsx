@@ -4,6 +4,32 @@ import { LogOut, Pin, MoreVertical, Reply, Heart, Trash2, Settings as SettingsIc
 import MessageInput from './MessageInput';
 import Settings from './Settings';
 
+const playNotificationSound = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+    
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+  } catch(e) {
+    // Ignore errors
+  }
+};
+
 export default function Chat({ user, onLogout, onUpdateUser }) {
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
@@ -36,6 +62,16 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
     newSocket.on('new_message', (msg) => {
       setMessages((prev) => [...prev, msg]);
       scrollToBottom();
+      
+      if (msg.sender_nickname !== user.nickname) {
+        playNotificationSound();
+        if (document.hidden && Notification.permission === 'granted') {
+          new Notification(msg.sender_nickname, {
+            body: msg.text || 'Sent an attachment',
+            icon: '/favicon.png'
+          });
+        }
+      }
     });
 
     newSocket.on('message_updated', (updatedMsg) => {
@@ -70,6 +106,11 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
     });
 
     setSocket(newSocket);
+
+    // Request notification permission
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
 
     return () => newSocket.close();
   }, [user]);
@@ -147,6 +188,18 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
         </audio>
       );
     }
+    // Check if it's a GIPHY gif URL sent as text
+    if (msg.type === 'text' && msg.content && msg.content.match(/^https?:\/\/media\d*\.giphy\.com\/media\/.*\.gif$/i)) {
+      return (
+        <img 
+          src={msg.content} 
+          alt="GIF" 
+          className="message-image" 
+          onClick={() => window.open(msg.content, '_blank')}
+        />
+      );
+    }
+    
     // Default text type
     return <span>{msg.content}</span>;
   };
