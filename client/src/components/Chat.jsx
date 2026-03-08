@@ -214,11 +214,20 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
           return (
             <div id={`msg-${msg.id}`} key={msg.id} className={`message-wrapper ${isMine ? 'mine' : 'other'} ${msg.is_pinned ? 'pinned' : ''}`}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMine ? 'flex-end' : 'flex-start', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                {!isMine && user.avatar && msg.sender_nickname === user.nickname ? null : !isMine && (
-                  <div className="msg-avatar-small">
-                    {msg.sender_nickname.charAt(0).toUpperCase()}
-                  </div>
-                )}
+                {!isMine && (() => {
+                  const senderAvatar = msg.sender_nickname === user.nickname 
+                    ? user.avatar 
+                    : onlineUsers.find(u => u.nickname === msg.sender_nickname)?.avatar;
+                  return (
+                    <div className="msg-avatar-small">
+                      {senderAvatar ? (
+                        <img src={senderAvatar} alt={msg.sender_nickname} />
+                      ) : (
+                        msg.sender_nickname.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                  );
+                })()}
                 <span className="message-sender">{msg.sender_nickname}</span>
                 
                 <div className="message-actions-container">
