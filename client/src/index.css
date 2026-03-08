@@ -388,6 +388,13 @@ button:active {
   background: rgba(255,255,255,0.1);
 }
 
+.context-menu .delete-btn {
+  color: #ff6b6b;
+}
+.context-menu .delete-btn:hover {
+  background: rgba(255, 107, 107, 0.15);
+}
+
 .message-wrapper.pinned .message-bubble {
   border: 1px solid #fbbf24;
   box-shadow: 0 0 15px rgba(251, 191, 36, 0.2);

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { LogOut, Pin, MoreVertical, Reply, Heart } from 'lucide-react';
+import { LogOut, Pin, MoreVertical, Reply, Heart, Trash2 } from 'lucide-react';
 import MessageInput from './MessageInput';
 
 export default function Chat({ user, onLogout }) {
@@ -37,6 +37,10 @@ export default function Chat({ user, onLogout }) {
       setMessages((prev) => 
         prev.map(msg => msg.id === updatedMsg.id ? updatedMsg : msg)
       );
+    });
+
+    newSocket.on('message_deleted', (id) => {
+      setMessages((prev) => prev.filter(msg => msg.id !== id));
     });
 
     newSocket.on('connect_error', (err) => {
@@ -84,6 +88,13 @@ export default function Chat({ user, onLogout }) {
   const handleReplyClick = (msg) => {
     setReplyingTo(msg);
     setActiveMenu(null);
+  };
+
+  const handleDelete = (id) => {
+    if (socket) {
+      socket.emit('delete_message', id);
+      setActiveMenu(null);
+    }
   };
 
   const renderMessageContent = (msg) => {
@@ -183,6 +194,10 @@ export default function Chat({ user, onLogout }) {
                       <button onClick={() => handleTogglePin(msg.id, msg.is_pinned)}>
                         <Pin size={14} fill={msg.is_pinned ? "currentColor" : "none"} />
                         {msg.is_pinned ? "Unpin" : "Pin message"}
+                      </button>
+                      <button className="delete-btn" onClick={() => handleDelete(msg.id)}>
+                        <Trash2 size={14} />
+                        Delete
                       </button>
                     </div>
                   )}

@@ -5,7 +5,7 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { saveMessage, getRecentMessages, togglePinMessage } = require('./database');
+const { saveMessage, getRecentMessages, togglePinMessage, deleteMessage } = require('./database');
 
 const app = express();
 const server = http.createServer(app);
@@ -139,6 +139,15 @@ io.on('connection', (socket) => {
     toggleLikeMessage(id, socket.nickname, (err, msg) => {
       if (!err && msg) {
         io.emit('message_updated', msg);
+      }
+    });
+  });
+
+  // Listen for message deletions
+  socket.on('delete_message', (id) => {
+    deleteMessage(id, (err) => {
+      if (!err) {
+        io.emit('message_deleted', id);
       }
     });
   });

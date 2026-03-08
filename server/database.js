@@ -87,9 +87,20 @@ const toggleLikeMessage = (id, nickname, callback) => {
   });
 };
 
+const deleteMessage = (id, callback) => {
+  db.run(`DELETE FROM messages WHERE id = ?`, [id], function(err) {
+    if (err) {
+      console.error("Error deleting message:", err);
+      return callback(err);
+    }
+    callback(null);
+  });
+};
+
 module.exports = {
   saveMessage,
   getRecentMessages,
   togglePinMessage,
-  toggleLikeMessage
+  toggleLikeMessage,
+  deleteMessage
 };
