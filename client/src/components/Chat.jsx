@@ -225,8 +225,8 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
         </audio>
       );
     }
-    // Check if it's a GIPHY gif URL sent as text
-    if (msg.type === 'text' && msg.content && msg.content.match(/^https?:\/\/media\d*\.giphy\.com\/media\/.*\.gif$/i)) {
+    // Check if it's a GIPHY or Tenor gif URL sent as text
+    if (msg.type === 'text' && msg.content && msg.content.match(/^https?:\/\/((media\d*\.giphy\.com\/media\/.*\.gif)|(c\.tenor\.com\/.*\.gif)|(media\.tenor\.com\/.*\.gif))/i)) {
       return (
         <img 
           src={msg.content} 

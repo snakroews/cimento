@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
 
-// Using GIPHY public beta key for demonstration (rate limited, but fine for small apps)
-const GIPHY_API_KEY = 'dc6zaTOxFJmzC';
+// Using Tenor public search API as a fallback since Giphy public beta key frequently rate-limits (403)
+const TENOR_API_KEY = 'LIVDSRZULELA'; // Tenor's well-known testing key, or standard v1 default
 
 export default function GifSearch({ onSelect, onClose }) {
   const [query, setQuery] = useState('');
@@ -21,14 +21,16 @@ export default function GifSearch({ onSelect, onClose }) {
     setLoading(true);
     try {
       const endpoint = searchQuery.trim()
-        ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(searchQuery)}&limit=12&rating=g`
-        : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=12&rating=g`;
+        ? `https://g.tenor.com/v1/search?key=${TENOR_API_KEY}&q=${encodeURIComponent(searchQuery)}&limit=15`
+        : `https://g.tenor.com/v1/trending?key=${TENOR_API_KEY}&limit=15`;
 
       const response = await fetch(endpoint);
       const data = await response.json();
-      setGifs(data.data || []);
+      
+      // Tenor returns data.results array
+      setGifs(data.results || []);
     } catch (err) {
-      console.error('Error fetching GIFs:', err);
+      console.error('Error fetching GIFs from Tenor:', err);
     } finally {
       setLoading(false);
     }
@@ -75,10 +77,10 @@ export default function GifSearch({ onSelect, onClose }) {
           gifs.map(gif => (
             <img
               key={gif.id}
-              src={gif.images.fixed_height_small.url}
-              alt={gif.title}
+              src={gif.media[0].tinygif.url}
+              alt={gif.title || 'GIF'}
               className="gif-thumbnail"
-              onClick={() => onSelect(gif.images.downsized.url)}
+              onClick={() => onSelect(gif.media[0].gif.url)}
             />
           ))
         )}
