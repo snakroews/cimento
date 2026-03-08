@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { LogOut, Pin, MoreVertical, Reply, Heart, Trash2, Settings as SettingsIcon, ChevronRight, Users } from 'lucide-react';
+import { LogOut, Pin, MoreVertical, Reply, Heart, Trash2, Settings as SettingsIcon, ChevronRight, Users, Search } from 'lucide-react';
 import MessageInput from './MessageInput';
 import Settings from './Settings';
 
@@ -38,6 +38,10 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [offlineUsers, setOfflineUsers] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const avatarCache = useRef({}); // persists avatars even after users log off
   const messagesEndRef = useRef(null);
 
@@ -64,6 +68,10 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
       scrollToBottom();
       
       if (msg.sender_nickname !== user.nickname) {
+        if (document.hidden) {
+          setUnreadCount(prev => prev + 1);
+        }
+        
         playNotificationSound();
         if (document.hidden && Notification.permission === 'granted') {
           new Notification(msg.sender_nickname, {
@@ -90,6 +98,15 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
       users.forEach(u => {
         if (u.avatar) avatarCache.current[u.nickname] = u.avatar;
       });
+      // Remove newly online users from offline list
+      setOfflineUsers(prev => prev.filter(offline => !users.find(u => u.nickname === offline.nickname)));
+    });
+
+    newSocket.on('user_offline', ({ nickname, lastSeen }) => {
+      setOfflineUsers(prev => {
+        const withoutOld = prev.filter(u => u.nickname !== nickname);
+        return [...withoutOld, { nickname, lastSeen }];
+      });
     });
 
     // Send avatar to server if we have one
@@ -114,6 +131,26 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
 
     return () => newSocket.close();
   }, [user]);
+
+  // Handle document title updates for unread count
+  useEffect(() => {
+    if (unreadCount > 0) {
+      document.title = `(${unreadCount}) cimento chat`;
+    } else {
+      document.title = 'cimento chat';
+    }
+  }, [unreadCount]);
+
+  // Clear unread count when tab becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        setUnreadCount(0);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   // Close context menu when clicking outside
   useEffect(() => {
@@ -222,6 +259,16 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
           </button>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button 
+            className="icon-btn" 
+            onClick={() => {
+              setShowSearch(!showSearch);
+              if (showSearch) setSearchQuery('');
+            }} 
+            title="Search Messages"
+          >
+            <Search size={20} />
+          </button>
           <button className="icon-btn" onClick={() => setShowSettings(true)} title="Settings">
             <SettingsIcon size={20} />
           </button>
@@ -230,6 +277,19 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
           </button>
         </div>
       </div>
+
+      {showSearch && (
+        <div style={{ padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid var(--glass-border)' }}>
+          <input
+            type="text"
+            placeholder="Search messages..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="custom-input"
+            autoFocus
+          />
+        </div>
+      )}
 
       {messages.some(m => m.is_pinned) && (
         <div className="pinned-messages-bar" onClick={() => {
@@ -260,7 +320,12 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
           </div>
         )}
         
-                  {messages.map((msg) => {
+        {messages.filter(msg => {
+          if (!searchQuery) return true;
+          const q = searchQuery.toLowerCase();
+          return (msg.content && msg.content.toLowerCase().includes(q)) || 
+                 (msg.sender_nickname && msg.sender_nickname.toLowerCase().includes(q));
+        }).map((msg) => {
           const isMine = msg.sender_nickname === user.nickname;
           let likesArr = [];
           try {
@@ -367,6 +432,26 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
                   <span className="member-name">{u.nickname}</span>
                 </div>
               ))}
+              
+              {offlineUsers.sort((a,b) => b.lastSeen - a.lastSeen).map((u, i) => {
+                const avatar = avatarCache.current[u.nickname];
+                const minsAgo = Math.floor((Date.now() - u.lastSeen) / 60000);
+                const timeStr = minsAgo < 1 ? 'just now' : minsAgo < 60 ? `${minsAgo}m ago` : `${Math.floor(minsAgo/60)}h ago`;
+                
+                return (
+                  <div key={`off-${i}`} className="member-item offline">
+                    <div className="member-avatar" style={{ opacity: 0.5 }}>
+                      {avatar ? <img src={avatar} alt={u.nickname} /> : u.nickname.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span className="member-name" style={{ color: 'var(--text-muted)' }}>{u.nickname}</span>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', opacity: 0.8, fontWeight: 500 }}>
+                        Last seen {timeStr}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

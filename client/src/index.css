@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
-:root {
+:root, .theme-dark {
   --text-main: #ffffff;
   --text-muted: rgba(255, 255, 255, 0.7);
   --accent: #ff477e;
@@ -9,14 +9,43 @@
   --bubble-other: rgba(255, 255, 255, 0.15);
   
   /* Glassmorphism variables */
+  --bg-color: #1a1a2e;
+  --bg-gradient-1: #752847;
+  --bg-gradient-2: #451b5c;
+  --bg-gradient-3: #1f4277;
+  --bg-gradient-4: #1f7762;
+  --bg-gradient-5: #7a3e46;
+
   --glass-bg: rgba(20, 20, 40, 0.4);
   --glass-border: rgba(255, 255, 255, 0.15);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
 
+.theme-light {
+  --text-main: #1a1a2e;
+  --text-muted: rgba(26, 26, 46, 0.7);
+  --accent: #d90429;
+  --accent-hover: #ef233c;
+  --bubble-sender: #ef233c;
+  --bubble-other: rgba(255, 255, 255, 0.85);
+
+  --bg-color: #f8f9fa;
+  --bg-gradient-1: #ffcfd2;
+  --bg-gradient-2: #f1c0e8;
+  --bg-gradient-3: #cfbaf0;
+  --bg-gradient-4: #a3c4f3;
+  --bg-gradient-5: #90dbf4;
+
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+}
+
+body {
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  color-scheme: dark;
   color: var(--text-main);
   box-sizing: border-box;
+  background-color: var(--bg-color);
 }
 
 *, *::before, *::after {
@@ -33,7 +62,7 @@ html, body, #root {
 
 /* Vibrant Animated Background */
 body {
-  background: linear-gradient(-45deg, #752847, #451b5c, #1f4277, #1f7762, #7a3e46);
+  background: linear-gradient(-45deg, var(--bg-gradient-1), var(--bg-gradient-2), var(--bg-gradient-3), var(--bg-gradient-4), var(--bg-gradient-5));
   background-size: 400% 400%;
   animation: gradientBG 8s ease infinite;
 }

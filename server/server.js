@@ -175,6 +175,9 @@ io.on('connection', (socket) => {
     console.log(`User disconnected: ${socket.nickname}`);
     onlineUsers.delete(socket.id);
     broadcastUserList();
+    if (socket.nickname) {
+      io.emit('user_offline', { nickname: socket.nickname, lastSeen: Date.now() });
+    }
   });
 });
 

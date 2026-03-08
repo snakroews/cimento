@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Login from './components/Login';
 import Chat from './components/Chat';
 
@@ -6,6 +6,14 @@ function App() {
   // If user is null, they are not logged in.
   // user obj will be: { nickname, password }
   const [user, setUser] = useState(null);
+
+  // Initialize theme
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('cimento_theme');
+    if (savedTheme === 'light') {
+      document.body.classList.add('theme-light');
+    }
+  }, []);
 
   // Floating emojis setup
   const emojis = ['🔥', '✨', '🌈', '🎉', '💖', '🎵', '💫', '☀️', '🌸', '🚀', '😎', '🍕', 'c', 'i', 'm', 'e', 'n', 't', 'o'];
