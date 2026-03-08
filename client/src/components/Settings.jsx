@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { X, Camera, User } from 'lucide-react';
 
-export default function Settings({ user, onUpdateUser, onClose }) {
+export default function Settings({ user, onUpdateUser, onClose, socket }) {
   const [nickname, setNickname] = useState(user.nickname);
   const [avatarPreview, setAvatarPreview] = useState(user.avatar || null);
   const fileInputRef = useRef(null);
@@ -24,14 +24,20 @@ export default function Settings({ user, onUpdateUser, onClose }) {
           const avatarUrl = data.message.content;
           setAvatarPreview(avatarUrl);
           onUpdateUser({ avatar: avatarUrl });
+          if (socket) socket.emit('update_profile', { avatar: avatarUrl });
         }
       })
       .catch(err => console.error('Avatar upload failed:', err));
   };
 
   const handleSave = () => {
+    const updates = {};
     if (nickname.trim() && nickname !== user.nickname) {
-      onUpdateUser({ nickname: nickname.trim() });
+      updates.nickname = nickname.trim();
+    }
+    if (Object.keys(updates).length > 0) {
+      onUpdateUser(updates);
+      if (socket) socket.emit('update_profile', { nickname: updates.nickname, avatar: avatarPreview });
     }
     onClose();
   };

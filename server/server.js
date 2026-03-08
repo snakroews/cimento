@@ -100,8 +100,20 @@ io.use((socket, next) => {
   }
 });
 
+// Track online users: socketId -> { nickname, avatar }
+const onlineUsers = new Map();
+
+const broadcastUserList = () => {
+  const users = Array.from(onlineUsers.values());
+  io.emit('user_list', users);
+};
+
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.nickname} (${socket.id})`);
+
+  // Add to online users
+  onlineUsers.set(socket.id, { nickname: socket.nickname, avatar: null });
+  broadcastUserList();
 
   // Send the last 50 messages upon connection
   getRecentMessages(50, (err, messages) => {
@@ -152,8 +164,17 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Listen for profile updates (nickname change, avatar)
+  socket.on('update_profile', ({ nickname, avatar }) => {
+    if (nickname) socket.nickname = nickname;
+    onlineUsers.set(socket.id, { nickname: socket.nickname, avatar: avatar || onlineUsers.get(socket.id)?.avatar });
+    broadcastUserList();
+  });
+
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.nickname}`);
+    onlineUsers.delete(socket.id);
+    broadcastUserList();
   });
 });
 

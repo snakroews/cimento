@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { LogOut, Pin, MoreVertical, Reply, Heart, Trash2, Settings as SettingsIcon } from 'lucide-react';
+import { LogOut, Pin, MoreVertical, Reply, Heart, Trash2, Settings as SettingsIcon, ChevronRight, Users } from 'lucide-react';
 import MessageInput from './MessageInput';
 import Settings from './Settings';
 
@@ -10,6 +10,8 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
   const [activeMenu, setActiveMenu] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState([]);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -44,6 +46,17 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
     newSocket.on('message_deleted', (id) => {
       setMessages((prev) => prev.filter(msg => msg.id !== id));
     });
+
+    newSocket.on('user_list', (users) => {
+      setOnlineUsers(users);
+    });
+
+    // Send avatar to server if we have one
+    if (user.avatar) {
+      newSocket.on('connect', () => {
+        newSocket.emit('update_profile', { nickname: user.nickname, avatar: user.avatar });
+      });
+    }
 
     newSocket.on('connect_error', (err) => {
       console.error(err.message);
@@ -136,9 +149,19 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
   return (
     <div className="chat-layout">
       <div className="chat-header">
-        <div>
-          <h1>cimento chat</h1>
-          <span className="user-badge">{user.nickname}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div>
+            <h1>cimento chat</h1>
+            <span className="user-badge">{user.nickname}</span>
+          </div>
+          <button 
+            className={`members-toggle-btn ${showMembers ? 'active' : ''}`}
+            onClick={() => setShowMembers(!showMembers)} 
+            title="Members"
+          >
+            <Users size={16} />
+            <span className="online-count">{onlineUsers.length}</span>
+          </button>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button className="icon-btn" onClick={() => setShowSettings(true)} title="Settings">
@@ -171,7 +194,8 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
         </div>
       )}
 
-      <div className="chat-messages">
+      <div className="chat-body">
+        <div className="chat-messages">
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '2rem' }}>
             No messages yet. Say hello!
@@ -255,6 +279,31 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
         <div ref={messagesEndRef} />
       </div>
 
+        {showMembers && (
+          <div className="members-panel">
+            <div className="members-panel-header">
+              <Users size={16} />
+              <span>Online — {onlineUsers.length}</span>
+            </div>
+            <div className="members-list">
+              {onlineUsers.map((u, i) => (
+                <div key={i} className="member-item">
+                  <div className="member-avatar">
+                    {u.avatar ? (
+                      <img src={u.avatar} alt={u.nickname} />
+                    ) : (
+                      u.nickname.charAt(0).toUpperCase()
+                    )}
+                    <span className="online-dot"></span>
+                  </div>
+                  <span className="member-name">{u.nickname}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <MessageInput 
         user={user} 
         onSendText={handleSendText} 
@@ -266,7 +315,8 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
         <Settings 
           user={user} 
           onUpdateUser={onUpdateUser} 
-          onClose={() => setShowSettings(false)} 
+          onClose={() => setShowSettings(false)}
+          socket={socket}
         />
       )}
     </div>
