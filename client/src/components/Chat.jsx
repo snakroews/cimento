@@ -1,0 +1,228 @@
+import { useEffect, useState, useRef } from 'react';
+import { io } from 'socket.io-client';
+import { LogOut, Pin, MoreVertical, Reply, Heart } from 'lucide-react';
+import MessageInput from './MessageInput';
+
+export default function Chat({ user, onLogout }) {
+  const [messages, setMessages] = useState([]);
+  const [socket, setSocket] = useState(null);
+  const [activeMenu, setActiveMenu] = useState(null); // id of message with open context menu
+  const [replyingTo, setReplyingTo] = useState(null); // the message object we are replying to
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    // Initialize Socket connection
+    const newSocket = io('/', {
+      auth: {
+        password: user.password,
+        nickname: user.nickname
+      },
+      extraHeaders: {
+        'Bypass-Tunnel-Reminder': 'true'
+      }
+    });
+
+    // Listen to events
+    newSocket.on('chat_history', (history) => {
+      setMessages(history);
+      scrollToBottom();
+    });
+
+    newSocket.on('new_message', (msg) => {
+      setMessages((prev) => [...prev, msg]);
+      scrollToBottom();
+    });
+
+    newSocket.on('message_updated', (updatedMsg) => {
+      setMessages((prev) => 
+        prev.map(msg => msg.id === updatedMsg.id ? updatedMsg : msg)
+      );
+    });
+
+    newSocket.on('connect_error', (err) => {
+      console.error(err.message);
+      alert("Authentication error or server offline.");
+      onLogout(); // kick user back to login
+    });
+
+    setSocket(newSocket);
+
+    return () => newSocket.close();
+  }, [user]);
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  const handleSendText = (text) => {
+    if (socket) {
+      if (replyingTo) {
+        socket.emit('send_message', { content: text, reply_to_id: replyingTo.id });
+        setReplyingTo(null);
+      } else {
+        socket.emit('send_message', text);
+      }
+    }
+  };
+
+  const handleTogglePin = (id, currentPinState) => {
+    if (socket) {
+      socket.emit('toggle_pin', { id, isPinned: !currentPinState });
+      setActiveMenu(null);
+    }
+  };
+
+  const handleToggleLike = (id) => {
+    if (socket) {
+      socket.emit('toggle_like', id);
+      setActiveMenu(null);
+    }
+  };
+
+  const handleReplyClick = (msg) => {
+    setReplyingTo(msg);
+    setActiveMenu(null);
+  };
+
+  const renderMessageContent = (msg) => {
+    if (msg.type === 'image') {
+      return (
+        <img 
+          src={msg.content} 
+          alt="sent by user" 
+          className="message-image" 
+          onClick={() => window.open(msg.content, '_blank')}
+        />
+      );
+    }
+    if (msg.type === 'audio') {
+      return (
+        <audio controls controlsList="nodownload">
+          <source src={msg.content} type="audio/webm" />
+          Your browser does not support the audio element.
+        </audio>
+      );
+    }
+    // Default text type
+    return <span>{msg.content}</span>;
+  };
+
+  return (
+    <div className="chat-layout">
+      <div className="chat-header">
+        <div>
+          <h1>cimento chat</h1>
+          <span className="user-badge">{user.nickname}</span>
+        </div>
+        <button className="icon-btn" onClick={onLogout} title="Logout">
+          <LogOut size={20} />
+        </button>
+      </div>
+
+      {messages.some(m => m.is_pinned) && (
+        <div className="pinned-messages-bar" onClick={() => {
+          const pinnedMessages = messages.filter(m => m.is_pinned);
+          const lastPinned = pinnedMessages[pinnedMessages.length - 1];
+          const el = document.getElementById(`msg-${lastPinned.id}`);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }}>
+          <Pin size={16} className="pinned-icon" fill="currentColor" />
+          <div className="pinned-content">
+            <strong>Pinned Message</strong>
+            <span>
+              {(() => {
+                const lastPinned = messages.filter(m => m.is_pinned).slice(-1)[0];
+                return lastPinned.type === 'text' ? lastPinned.content : 
+                       lastPinned.type === 'image' ? '📷 Image' : '🎤 Voice Message';
+              })()}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className="chat-messages">
+        {messages.length === 0 && (
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '2rem' }}>
+            No messages yet. Say hello!
+          </div>
+        )}
+        
+                  {messages.map((msg) => {
+          const isMine = msg.sender_nickname === user.nickname;
+          let likesArr = [];
+          try {
+            likesArr = JSON.parse(msg.likes || '[]');
+          } catch(e) {}
+          const isLikedByMe = likesArr.includes(user.nickname);
+          const replyMsg = msg.reply_to_id ? messages.find(m => m.id == msg.reply_to_id) : null;
+
+          return (
+            <div id={`msg-${msg.id}`} key={msg.id} className={`message-wrapper ${isMine ? 'mine' : 'other'} ${msg.is_pinned ? 'pinned' : ''}`}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMine ? 'flex-end' : 'flex-start', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                <span className="message-sender">{msg.sender_nickname}</span>
+                
+                <div className="message-actions-container">
+                  <button 
+                    className="action-menu-btn"
+                    onClick={() => setActiveMenu(activeMenu === msg.id ? null : msg.id)}
+                  >
+                    <MoreVertical size={14} />
+                  </button>
+                  
+                  {activeMenu === msg.id && (
+                    <div className="context-menu">
+                      <button onClick={() => handleToggleLike(msg.id)}>
+                        <Heart size={14} fill={isLikedByMe ? "var(--accent)" : "none"} color={isLikedByMe ? "var(--accent)" : "currentColor"} />
+                        {isLikedByMe ? "Unlike" : "Like"}
+                      </button>
+                      <button onClick={() => handleReplyClick(msg)}>
+                        <Reply size={14} /> Reply
+                      </button>
+                      <button onClick={() => handleTogglePin(msg.id, msg.is_pinned)}>
+                        <Pin size={14} fill={msg.is_pinned ? "currentColor" : "none"} />
+                        {msg.is_pinned ? "Unpin" : "Pin message"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="message-bubble">
+                {replyMsg && (
+                  <div className="reply-snippet">
+                    <strong>{replyMsg.sender_nickname}</strong>
+                    <div className="reply-content">
+                       {replyMsg.type === 'image' ? '📷 Image' : replyMsg.type === 'audio' ? '🎤 Voice Message' : replyMsg.content}
+                    </div>
+                  </div>
+                )}
+                {renderMessageContent(msg)}
+              </div>
+              <div className="message-meta-footer">
+                <span className="message-timestamp">
+                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                {likesArr.length > 0 && (
+                  <div className="likes-counter" title={likesArr.join(', ')}>
+                    <Heart size={10} fill="var(--accent)" color="var(--accent)" />
+                    <span>{likesArr.length}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <MessageInput 
+        user={user} 
+        onSendText={handleSendText} 
+        replyingTo={replyingTo}
+        onCancelReply={() => setReplyingTo(null)}
+      />
+    </div>
+  );
+}
