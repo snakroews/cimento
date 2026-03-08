@@ -12,6 +12,7 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const avatarCache = useRef({}); // persists avatars even after users log off
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -49,6 +50,10 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
 
     newSocket.on('user_list', (users) => {
       setOnlineUsers(users);
+      // Cache avatars so they persist after logout
+      users.forEach(u => {
+        if (u.avatar) avatarCache.current[u.nickname] = u.avatar;
+      });
     });
 
     // Send avatar to server if we have one
@@ -217,7 +222,8 @@ export default function Chat({ user, onLogout, onUpdateUser }) {
                 {!isMine && (() => {
                   const senderAvatar = msg.sender_nickname === user.nickname 
                     ? user.avatar 
-                    : onlineUsers.find(u => u.nickname === msg.sender_nickname)?.avatar;
+                    : onlineUsers.find(u => u.nickname === msg.sender_nickname)?.avatar 
+                      || avatarCache.current[msg.sender_nickname];
                   return (
                     <div className="msg-avatar-small">
                       {senderAvatar ? (
